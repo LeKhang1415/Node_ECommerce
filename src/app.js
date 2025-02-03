@@ -11,9 +11,12 @@ app.use(helmet());
 app.use(compression());
 
 // Khởi tạo db
+require("./dbs/initMongodb");
+const { checkOverload } = require("./helpers/checkConnect");
+checkOverload();
 
 // Khởi tạo routes
 
 // Xử lý lỗi
 
-module.export = app;
+module.exports = app;

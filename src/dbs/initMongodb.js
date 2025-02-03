@@ -1,4 +1,11 @@
 const mongoose = require("mongoose");
+const {
+    db: { host, port, name },
+} = require("../configs/configsMongoDB");
+const { countConnect } = require("../helpers/checkConnect");
+
+const connectString =
+    process.env.MONGO_URL || `mongodb://${host}:${port}/${name}`;
 
 class Database {
     constructor() {
@@ -10,28 +17,18 @@ class Database {
             mongoose.set("debug", true);
             mongoose.set("debug", { color: true });
 
-            const connectString = process.env.MONGO_URI || "mongodb://localhost:27017/mydb";
-
             await mongoose.connect(connectString, {
+                maxPoolSize: 50,
                 useNewUrlParser: true,
-                useUnifiedTopology: true
+                useUnifiedTopology: true,
             });
 
+            countConnect();
             console.log("Kết nối MongoDB thành công!");
         } catch (err) {
             console.error("Lỗi kết nối MongoDB:", err);
         }
     }
-
-    async disconnect() {
-        try {
-            await mongoose.disconnect();
-            console.log("Đã ngắt kết nối với MongoDB.");
-        } catch (err) {
-            console.error("Lỗi khi ngắt kết nối MongoDB:", err);
-        }
-    }
-
     static getInstance() {
         if (!Database.instance) {
             Database.instance = new Database();
