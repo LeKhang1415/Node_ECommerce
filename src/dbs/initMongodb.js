@@ -23,8 +23,9 @@ class Database {
                 useUnifiedTopology: true,
             });
 
-            countConnect();
+            // countConnect();
             console.log("Kết nối MongoDB thành công!");
+            console.log(connectString);
         } catch (err) {
             console.error("Lỗi kết nối MongoDB:", err);
         }
