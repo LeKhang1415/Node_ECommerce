@@ -24,6 +24,21 @@ const { checkOverload } = require("./helpers/checkConnect");
 
 // Khởi tạo routes
 app.use("/", Routes);
+
 // Xử lý lỗi
+app.use((req, res, next) => {
+    const error = new Error("Không tìm thấy");
+    error.status = 404;
+    next(error);
+});
+
+app.use((error, req, res, next) => {
+    const statusCode = error.status || 500;
+    return res.status(statusCode).json({
+        status: "error",
+        code: statusCode,
+        message: error.message || "Lỗi hệ thống",
+    });
+});
 
 module.exports = app;
