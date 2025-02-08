@@ -1,22 +1,32 @@
 const keyModel = require("../models/keyModel");
 
-class keyTokenServices {
+class KeyTokenService {
     static createKeyToken = async ({
         userId,
         key_accessToken,
         key_refreshToken,
+        refreshToken,
     }) => {
         try {
-            const keyToken = keyModel.create({
-                user: userId,
+            const filter = { user: userId };
+            const update = {
                 key_accessToken,
                 key_refreshToken,
-            });
-            return token ? keyToken.key_accessToken : null;
+                refreshTokenUsed: [],
+                refreshToken,
+            };
+            const options = { upsert: true, new: true };
+
+            const tokens = await keyModel.findOneAndUpdate(
+                filter,
+                update,
+                options
+            );
+
+            return tokens ? tokens.publicKey : null;
         } catch (error) {
             return error;
         }
     };
 }
-
-module.exports = keyTokenServices;
+module.exports = KeyTokenService;

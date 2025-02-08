@@ -4,7 +4,8 @@ const crypto = require("crypto");
 const keyTokenServices = require("./keyTokenServices");
 const { createTokenPair } = require("../auth/authUtils");
 const { getIntoData } = require("../utils");
-const { BadRequestError } = require("../core/errorResponse");
+const { BadRequestError, AuthFailureError } = require("../core/errorResponse");
+const { findByEmail } = require("./shopService");
 
 const RoleShop = {
     SHOP: "SHOP",
@@ -14,6 +15,45 @@ const RoleShop = {
 };
 
 class AccessService {
+    static login = async ({ password, email, refreshToken = null }) => {
+        const foundShop = await findByEmail({ email });
+        if (!foundShop) {
+            throw new BadRequestError("Shop không tồn tại");
+        }
+
+        const match = bcrypt.compare(password, foundShop.password);
+        if (!match) {
+            throw new AuthFailureError("Lỗi xác thực người dùng");
+        }
+
+        const key_accessToken = crypto.randomBytes(64).toString("hex");
+        const key_refreshToken = crypto.randomBytes(64).toString("hex");
+
+        const token = await createTokenPair(
+            { userId: foundShop._id, email },
+            key_accessToken,
+            key_refreshToken
+        );
+
+        await keyTokenServices.createKeyToken({
+            userId: foundShop._id,
+            key_accessToken,
+            key_refreshToken,
+            refreshToken: token.refreshToken,
+        });
+
+        return {
+            status: "success",
+            token,
+            data: {
+                shop: getIntoData({
+                    fields: ["_id", "name", "email"],
+                    object: foundShop,
+                }),
+            },
+        };
+    };
+
     static signUp = async ({ name, email, password }) => {
         // Bước 1: Kiểm tra xem email đã tồn tại chưa
         const holderShop = await shopModel.findOne({ email }).lean();
@@ -36,22 +76,24 @@ class AccessService {
             const key_accessToken = crypto.randomBytes(64).toString("hex");
             const key_refreshToken = crypto.randomBytes(64).toString("hex");
 
-            const keyToken = await keyTokenServices.createKeyToken({
-                userId: newShop._id,
-                key_accessToken,
-                key_refreshToken,
-            });
-
-            if (!keyToken) {
-                throw new BadRequestError("Không tạo được token");
-            }
-
             // create token pair
             const token = await createTokenPair(
                 { userId: newShop._id, email },
                 key_accessToken,
                 key_refreshToken
             );
+
+            const keyToken = await keyTokenServices.createKeyToken({
+                userId: newShop._id,
+                key_accessToken,
+                key_refreshToken,
+                refreshToken: token.refreshToken,
+            });
+
+            if (!keyToken) {
+                throw new BadRequestError("Không tạo được token");
+            }
+
             return {
                 status: "success",
                 token,
