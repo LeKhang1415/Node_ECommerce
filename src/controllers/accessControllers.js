@@ -14,6 +14,13 @@ class AuthControllers {
             metadata: await AccessService.signUp(req.body),
         }).send(res);
     };
+
+    static logout = async (req, res, next) => {
+        new SuccessResponse({
+            message: "Đăng xuất thành công",
+            metadata: await AccessService.logout(req.keyStore),
+        }).send(res);
+    };
 }
 
 module.exports = AuthControllers;
