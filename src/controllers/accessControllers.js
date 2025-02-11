@@ -21,6 +21,15 @@ class AuthControllers {
             metadata: await AccessService.logout(req.keyStore),
         }).send(res);
     };
+
+    static handleRefreshToken = async (req, res, next) => {
+        new SuccessResponse({
+            message: "Lấy token thành công",
+            metadata: await AccessService.handleRefreshToken(
+                req.body.refreshToken
+            ),
+        }).send(res);
+    };
 }
 
 module.exports = AuthControllers;
