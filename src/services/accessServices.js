@@ -19,61 +19,45 @@ const RoleShop = {
 };
 
 class AccessService {
-    static handleRefreshToken = async (refreshToken) => {
-        // Bước 1: Kiểm tra xem refreshToken này đã từng bị sử dụng chưa
-        const foundToken = await keyTokenServices.findByRefreshTokenUsed(
-            refreshToken
-        );
+    static handleRefreshToken = async ({ keyStore, user, refreshToken }) => {
+        // Lấy userId và email từ user object
+        const { userId, email } = user;
 
-        if (foundToken) {
-            // Nếu token đã bị dùng, giải mã để lấy thông tin người dùng
-            const { userId, email } = await verifyJWT(
-                refreshToken,
-                foundToken.key_refreshToken
-            );
-
-            await keyTokenServices.deleteKeyById(userId);
-
-            throw new ForbiddenError(
-                "Có lỗi đã xảy ra !!! Vui lòng đăng nhập lại"
-            );
+        // Kiểm tra nếu refreshToken đã được sử dụng trước đó
+        if (keyStore.refreshTokensUsed.includes(refreshToken)) {
+            await KeyTokenService.deleteKeyById(userId); // Xóa keyStore của user
+            throw new ForbiddenError("Có lỗi xảy ra! Vui lòng đăng nhập lại."); // Yêu cầu đăng nhập lại
         }
-        // Bước 2: Kiểm tra xem refreshToken có hợp lệ hay không
-        const holderToken = await KeyTokenService.findByRefreshToken(
-            refreshToken
-        );
-        if (!holderToken)
-            throw new AuthFailureError(
-                "Không tìm thấy tài khoản! Vui lòng kiểm tra lại."
-            );
 
-        // Bước 3: Xác minh token để lấy thông tin người dùng
-        const { userId, email } = await verifyJWT(
-            refreshToken,
-            holderToken.key_refreshToken
-        );
+        // Kiểm tra nếu refreshToken không khớp với token trong DB
+        if (keyStore.refreshToken !== refreshToken)
+            throw new AuthFailureError("Cửa hàng chưa được đăng ký.");
 
-        // Bước 4: Kiểm tra xem email của user có tồn tại trong hệ thống không
+        // Kiểm tra xem shop có tồn tại hay không
         const foundShop = await findByEmail({ email });
-        if (!foundShop) throw new AuthFailureError("Tài khoản không tồn tại!");
+        if (!foundShop)
+            throw new AuthFailureError("Cửa hàng chưa được đăng ký.");
 
-        // Bước 5: Tạo cặp token mới (accessToken + refreshToken)
+        // Tạo một cặp token mới (accessToken và refreshToken)
         const tokens = await createTokenPair(
-            userId,
-            email,
-            holderToken.key_accessToken,
-            holderToken.key_refreshToken
+            { userId, email },
+            keyStore.publicKey,
+            keyStore.privateKey
         );
 
-        // Bước 6: Cập nhật refreshToken mới vào database
-        await holderToken.updateOne({
-            $set: { refreshToken: tokens.refreshToken }, // Cập nhật refreshToken mới
-            $addToSet: { refreshTokensUsed: refreshToken }, // Lưu lại refreshToken cũ đã dùng để kiểm tra sau này
+        // Cập nhật refreshToken mới và lưu refreshToken cũ vào danh sách đã sử dụng
+        await keyStore.update({
+            $set: {
+                refreshToken: tokens.refreshToken, // Cập nhật refreshToken mới
+            },
+            $addToSet: {
+                refreshTokensUsed: refreshToken, // Đánh dấu refreshToken cũ đã được sử dụng
+            },
         });
 
-        // Trả về accessToken và refreshToken mới
+        // Trả về thông tin user và token mới
         return {
-            user: { userId, email },
+            user,
             tokens,
         };
     };
