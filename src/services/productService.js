@@ -3,12 +3,12 @@ const { BadRequestError, ForbiddenError } = require("../core/errorResponse");
 
 // Định nghĩa class tạo ProductFactory
 class ProductFactory {
-    static createProduct(type, payload) {
+    static async createProduct(type, payload) {
         switch (type) {
             case "Clothing":
-                Clothing.createProduct(payload);
+                new Clothing(payload).createProduct();
             case "Electronic":
-                Electronics.createProduct(payload);
+                new Electronics(payload).createProduct();
             default:
                 throw new BadRequestError("Type ko hợp lệ");
         }
@@ -38,19 +38,22 @@ class Product {
     }
 
     // Phương thức tạo sản phẩm mới
-    async createProduct() {
-        return await product.create(this);
+    async createProduct(productId) {
+        return await product.create({ ...this, _id: productId });
     }
 }
 
 // Định nghĩa lớp con cho các loại sản phẩm khác nhau - Quần áo
 class Clothing extends Product {
     async createProduct() {
-        const newClothing = await clothing.create(this.product_attributes);
+        const newClothing = await await clothing.create({
+            ...this.product_attributes,
+            product_shop: this.product_shop,
+        });
         if (!newClothing)
             throw new BadRequestError("Lỗi khi tạo sản phẩm Quần áo");
 
-        const newProduct = await super.createProduct();
+        const newProduct = await super.createProduct(newClothing._id);
         if (!newProduct) throw new BadRequestError("Lỗi khi tạo sản phẩm");
 
         return newProduct;
@@ -60,11 +63,15 @@ class Clothing extends Product {
 // Định nghĩa lớp con cho các loại sản phẩm khác nhau - Điện tử
 class Electronics extends Product {
     async createProduct() {
-        const newElectronic = await electronic.create(this.product_attributes);
+        const newElectronic = await electronic.create({
+            ...this.product_attributes,
+            product_shop: this.product_shop,
+        });
+
         if (!newElectronic)
             throw new BadRequestError("Lỗi khi tạo sản phẩm Điện tử");
 
-        const newProduct = await super.createProduct();
+        const newProduct = await super.createProduct(newElectronic._id);
         if (!newProduct) throw new BadRequestError("Lỗi khi tạo sản phẩm");
 
         return newProduct;

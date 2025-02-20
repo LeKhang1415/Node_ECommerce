@@ -7,7 +7,7 @@ class ProductControllers {
             message: "Tạo sản phẩm mới thành công!",
             metadata: await ProductService.createProduct(
                 req.body.product_type,
-                req.body
+                { ...req.body, product_shop: req.user.UserId }
             ),
         }).send(res);
     };
