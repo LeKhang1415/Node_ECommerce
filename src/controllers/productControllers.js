@@ -11,6 +11,17 @@ class ProductControllers {
             ),
         }).send(res);
     };
+
+    // Query //
+    getAllDraftsForShop = async (req, res, next) => {
+        new SuccessResponse({
+            message: "Lấy danh sách Draft thành công!",
+            metadata: await ProductService.findAllDraftsForShop({
+                product_shop: req.user.userId,
+            }),
+        }).send(res);
+    };
+    // End Query //
 }
 
 module.exports = new ProductControllers();

@@ -10,4 +10,6 @@ router.use(authentication);
 // Định tuyến API để tạo sản phẩm
 router.post("/", handelAsync(productControllers.createProduct));
 
+router.get("/drafts/all", asyncHandler(productControllers.getAllDraftsForShop));
+
 module.exports = router;

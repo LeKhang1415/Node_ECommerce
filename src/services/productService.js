@@ -1,17 +1,26 @@
 const { product, electronic, clothing } = require("../models/productModel");
 const { BadRequestError, ForbiddenError } = require("../core/errorResponse");
+const { findAllDraftsForShop } = require("../models/repositories/productRepo");
 
 // Định nghĩa class tạo ProductFactory
 class ProductFactory {
+    static productRegistry = {};
+
+    static registerProductType(type, classRef) {
+        ProductFactory.productRegistry[type] = classRef;
+    }
+
     static async createProduct(type, payload) {
-        switch (type) {
-            case "Clothing":
-                new Clothing(payload).createProduct();
-            case "Electronic":
-                new Electronics(payload).createProduct();
-            default:
-                throw new BadRequestError("Type ko hợp lệ");
-        }
+        const productClass = ProductFactory.productRegistry[type];
+        if (!productClass) throw new BadRequestError("Type không hợp lệ");
+
+        return new productClass(payload).createProduct;
+    }
+
+    // Query //
+    static async findAllDraftsForShop({ product_shop, limit = 50, skip = 0 }) {
+        const query = { product_shop, isDraft: true };
+        return findAllDraftsForShop({ query, limit, skip });
     }
 }
 
@@ -46,7 +55,7 @@ class Product {
 // Định nghĩa lớp con cho các loại sản phẩm khác nhau - Quần áo
 class Clothing extends Product {
     async createProduct() {
-        const newClothing = await await clothing.create({
+        const newClothing = await clothing.create({
             ...this.product_attributes,
             product_shop: this.product_shop,
         });
@@ -77,5 +86,27 @@ class Electronics extends Product {
         return newProduct;
     }
 }
+
+// Định nghĩa lớp con cho sản phẩm Nội thất
+class Furniture extends Product {
+    async createProduct() {
+        const newFurniture = await furniture.create({
+            ...this.product_attributes,
+            product_shop: this.product_shop,
+        });
+
+        if (!newFurniture)
+            throw new BadRequestError("Lỗi khi tạo sản phẩm Nội thất");
+
+        const newProduct = await super.createProduct(newFurniture._id);
+        if (!newProduct) throw new BadRequestError("Lỗi khi tạo sản phẩm");
+
+        return newProduct;
+    }
+}
+
+ProductFactory.registerProductType("Clothing", Clothing);
+ProductFactory.registerProductType("Electronics", Electronics);
+ProductFactory.registerProductType("Furniture", Furniture);
 
 module.exports = ProductFactory;
